@@ -1,100 +1,133 @@
-const webview = document.getElementById('view')
-const urlInput = document.getElementById('url-input')
-const goBtn = document.getElementById('go-btn')
-const backBtn = document.getElementById('back-btn')
-const forwardBtn = document.getElementById('forward-btn')
-const navBar = document.getElementById('nav-bar')
-const dlBtn = document.getElementById('dl-btn')
+const tabsBar = document.getElementById('tabs-bar');
+const newTabBtn = document.getElementById('new-tab-btn');
+const webviewContainer = document.getElementById('webview-container');
+const urlInput = document.getElementById('url-input');
+const goBtn = document.getElementById('go-btn');
+const bookmarkBtn = document.getElementById('bookmark-btn');
+const bookmarksBar = document.getElementById('bookmarks-bar');
 
-const path = require('path') // 👈 Imports paths tool
+let tabs = [];
+let activeTabId = null;
 
-// Password UI elements
-const pwdPrompt = document.getElementById('password-prompt')
-const savePwdBtn = document.getElementById('save-pwd-btn')
-const ignorePwdBtn = document.getElementById('ignore-pwd-btn')
-let pendingPassword = null;
+// --- TAB SYSTEM LOGIC ---
+function createTab(url = 'https://www.google.com') {
+  const tabId = 'tab-' + Date.now();
 
-function navigate() {
-    let url = urlInput.value.trim()
+  const tabButton = document.createElement('button');
+  tabButton.id = 'btn-' + tabId;
+  tabButton.textContent = 'New Tab ';
+  tabButton.style.cssText = "background: #333; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 3px 3px 0 0; font-size: 12px; display: flex; align-items: center; gap: 5px;";
+  
+  const closeBtn = document.createElement('span');
+  closeBtn.textContent = '×';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.fontWeight = 'bold';
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeTab(tabId);
+  });
+  tabButton.appendChild(closeBtn);
 
-    // EASTER EGG 1: Matrix Mode
-    if (url.toLowerCase() === 'matrix') {
-        navBar.style.backgroundColor = '#00ff00'
-        navBar.style.borderBottom = '1px solid #003300'
-        urlInput.style.backgroundColor = '#000000'
-        urlInput.style.color = '#00ff00'
-        alert('Wake up, Neo... The browser has you.')
-        return;
+  const webview = document.createElement('webview');
+  webview.id = 'view-' + tabId;
+  webview.src = url;
+  webview.style.cssText = "width: 100%; height: 100%; display: none;";
+  
+  webview.addEventListener('did-stop-loading', () => {
+    tabButton.firstChild.textContent = webview.getTitle().substring(0, 10) + '... ';
+    if (activeTabId === tabId) {
+      urlInput.value = webview.getURL();
     }
+  });
 
-    // EASTER EGG 2: The Barrel Roll
-    if (url.toLowerCase() === 'flip') {
-        webview.style.transition = 'transform 2s ease-in-out'
-        webview.style.transform = 'rotate(360deg)'
-        setTimeout(() => { webview.style.transform = 'none' }, 2000)
-        urlInput.value = webview.getURL()
-        return;
-    }
+  tabsBar.insertBefore(tabButton, newTabBtn);
+  webviewContainer.appendChild(webview);
+  
+  tabs.push({ id: tabId, button: tabButton, webview: webview });
 
-    // EASTER EGG 3: Duck Attack!
-    if (url.toLowerCase() === 'ducks') {
-        for (let i = 0; i < 20; i++) {
-            const duck = document.createElement('div');
-            duck.innerText = '🦆';
-            duck.style.position = 'fixed';
-            duck.style.fontSize = Math.random() * 30 + 20 + 'px';
-            duck.style.left = Math.random() * window.innerWidth + 'px';
-            duck.style.top = Math.random() * window.innerHeight + 'px';
-            duck.style.zIndex = '9999';
-            duck.style.pointerEvents = 'none';
-            duck.style.transition = 'all 4s ease-in-out';
-            document.body.appendChild(duck);
-            setInterval(() => {
-                duck.style.left = Math.random() * window.innerWidth + 'px';
-                duck.style.top = Math.random() * window.innerHeight + 'px';
-            }, 3000);
-        }
-        urlInput.value = webview.getURL();
-        return;
-    }
-
-    // Normal navigation logic
-    if (!/^https?:\/\//i.test(url)) {
-        url = 'https://' + url
-    }
-    webview.loadURL(url)
+  tabButton.addEventListener('click', () => switchTab(tabId));
+  switchTab(tabId);
 }
 
-// 📥 Fixed Download Navigation path
-dlBtn.addEventListener('click', () => {
-    const fullPath = 'file://' + path.join(__dirname, 'downloads.html')
-    webview.loadURL(fullPath)
-    urlInput.value = 'browser://downloads'
-})
-
-goBtn.addEventListener('click', navigate)
-urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate() })
-backBtn.addEventListener('click', () => { if (webview.canGoBack()) webview.goBack() })
-forwardBtn.addEventListener('click', () => { if (webview.canGoForward()) webview.goForward() })
-webview.addEventListener('did-navigate', (event) => { urlInput.value = event.url })
-
-// Password catch logic
-const { ipcRenderer } = require('electron');
-ipcRenderer.on('detected-password', (event, data) => {
-    pendingPassword = data;
-    pwdPrompt.style.display = 'block';
-})
-
-savePwdBtn.addEventListener('click', () => {
-    if (pendingPassword) {
-        const currentSite = new URL(webview.getURL()).hostname;
-        localStorage.setItem(`pwd_${currentSite}`, JSON.stringify(pendingPassword));
-        alert('Password saved locally!');
+function switchTab(tabId) {
+  tabs.forEach(tab => {
+    if (tab.id === tabId) {
+      tab.webview.style.display = 'flex';
+      tab.button.style.background = '#444';
+      urlInput.value = tab.webview.getURL();
+      activeTabId = tabId;
+    } else {
+      tab.webview.style.display = 'none';
+      tab.button.style.background = '#222';
     }
-    pwdPrompt.style.display = 'none';
-})
+  });
+}
 
-ignorePwdBtn.addEventListener('click', () => {
-    pwdPrompt.style.display = 'none';
-    pendingPassword = null;
-})
+function closeTab(tabId) {
+  const tabIndex = tabs.findIndex(tab => tab.id === tabId);
+  if (tabIndex === -1) return;
+
+  tabs[tabIndex].button.remove();
+  tabs[tabIndex].webview.remove();
+  tabs.splice(tabIndex, 1);
+
+  if (activeTabId === tabId && tabs.length > 0) {
+    switchTab(tabs[tabs.length - 1].id);
+  } else if (tabs.length === 0) {
+    createTab();
+  }
+}
+
+goBtn.addEventListener('click', () => {
+  let url = urlInput.value.trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  const activeTab = tabs.find(tab => tab.id === activeTabId);
+  if (activeTab) {
+    activeTab.webview.src = url;
+  }
+});
+
+urlInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') goBtn.click();
+});
+
+newTabBtn.addEventListener('click', () => createTab());
+
+// --- BOOKMARK SYSTEM LOGIC ---
+function displayBookmarks() {
+  bookmarksBar.innerHTML = '<span style="color: #aaa; font-size: 12px; margin-right: 5px;">Bookmarks:</span>';
+  let bookmarks = JSON.parse(localStorage.getItem('cool-bookmarks')) || [];
+  
+  bookmarks.forEach((url) => {
+    const btn = document.createElement('button');
+    btn.textContent = url.replace('https://', '').replace('http://', '').substring(0, 15) + '...';
+    btn.style.cssText = "background: #444; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;";
+    
+    btn.addEventListener('click', () => {
+      const activeTab = tabs.find(tab => tab.id === activeTabId);
+      if (activeTab) {
+        activeTab.webview.src = url;
+        urlInput.value = url;
+      }
+    });
+    bookmarksBar.appendChild(btn);
+  });
+}
+
+bookmarkBtn.addEventListener('click', () => {
+  const currentUrl = urlInput.value.trim();
+  if (currentUrl) {
+    let bookmarks = JSON.parse(localStorage.getItem('cool-bookmarks')) || [];
+    if (!bookmarks.includes(currentUrl)) {
+      bookmarks.push(currentUrl);
+      localStorage.setItem('cool-bookmarks', JSON.stringify(bookmarks));
+      displayBookmarks();
+    }
+  }
+});
+
+// Start with one tab and load bookmarks
+createTab();
+displayBookmarks();
