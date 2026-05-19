@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #fff; }
+    #nav-bar { display: flex; padding: 8px; background: #e0e0e0; border-bottom: 1px solid #ccc; gap: 5px; align-items: center; }
+    #url-input { flex-grow: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    button { padding: 6px 12px; cursor: pointer; background: #fff; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }
+    button:hover { background: #f0f0f0; }
+    #dl-btn { background: #1a73e8; color: white; border: none; }
+    #dl-btn:hover { background: #1557b0; }
+    
+    #password-prompt { display: none; background: #fff9c4; padding: 8px; border-bottom: 1px solid #fbc02d; text-align: center; font-size: 14px; }
+    #password-prompt button { margin-left: 10px; padding: 3px 8px; }
+
+    webview { flex-grow: 1; width: 100%; height: 100%; background: #fff; }
+  </style>
+</head>
+<body>
+
+  <div id="nav-bar">
+    <button id="back-btn">⇦</button>
+    <button id="forward-btn">⇨</button>
+    <input type="text" id="url-input" value="https://www.google.com" />
+    <button id="go-btn">Go</button>
+    <button id="dl-btn">Downloads 📥</button>
+  </div>
+
+  <div id="password-prompt">
+    <span>Do you want to save the password for this site?</span>
+    <button id="save-pwd-btn" style="background: #4caf50; color: white;">Save</button>
+    <button id="ignore-pwd-btn">Never</button>
+  </div>
+
+  <webview id="view" src="https://www.google.com" preload="preload.js"></webview>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
